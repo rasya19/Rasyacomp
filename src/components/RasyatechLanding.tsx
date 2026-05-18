@@ -197,6 +197,7 @@ export default function RasyatechLanding() {
     const school = formData.get('school_name') as string;
     const addr = formData.get('address') as string;
     const email = formData.get('email') as string;
+    const waNumber = formData.get('wa_number') as string;
     const pass = formData.get('password') as string;
     const refCode = (formData.get('referral_code') as string || '').toUpperCase();
     
@@ -223,9 +224,11 @@ export default function RasyatechLanding() {
       school_name: school,
       admin_email: email,
       admin_name: school,
+      WA: waNumber,
       npsn: '0',
       status: 'pending',
-      subdomain: ''
+      subdomain: '',
+      is_approved: false
     };
 
     console.log("Attempting registration with data:", registrationData);
@@ -638,6 +641,10 @@ export default function RasyatechLanding() {
             <div className="form-group">
               <label>Email Utama (Admin)</label>
               <input type="email" name="email" required placeholder="Contoh: admin@sekolah.sch.id" />
+            </div>
+            <div className="form-group">
+              <label>Nomor WhatsApp (Aktif)</label>
+              <input type="text" name="wa_number" required placeholder="Contoh: 08123456789" />
             </div>
             <div className="form-group">
               <label>Password Admin (Nantinya)</label>

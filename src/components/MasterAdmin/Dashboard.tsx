@@ -414,14 +414,16 @@ export default function Admin() {
   const handleSaveRegistration = async (e: FormEvent) => {
     e.preventDefault();
     
-    // STRICT PAYLOAD - only columns confirmed by user
+    // STRICT PAYLOAD - only columns confirmed by user (10 total)
     const payload: any = {
-      school_name: editingRegistration.school_name,
       npsn: editingRegistration.npsn,
+      school_name: editingRegistration.school_name,
       admin_name: editingRegistration.admin_name,
       admin_email: editingRegistration.admin_email,
+      WA: editingRegistration.WA,
       status: editingRegistration.status || 'pending',
-      subdomain: editingRegistration.subdomain || ''
+      subdomain: editingRegistration.subdomain || '',
+      is_approved: !!editingRegistration.is_approved
     };
     
     try {
@@ -924,7 +926,7 @@ export default function Admin() {
                   <p className="text-slate-500 font-medium">Kelola pendaftaran sekolah baru dari landing page.</p>
                 </div>
                 <button 
-                  onClick={() => setEditingRegistration({ school_name: '', npsn: '', admin_name: '', admin_email: '', status: 'pending', subdomain: '' })}
+                  onClick={() => setEditingRegistration({ school_name: '', npsn: '', admin_name: '', admin_email: '', WA: '', status: 'pending', subdomain: '', is_approved: false })}
                   className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl flex items-center gap-2 shadow-lg"
                 >
                   <Plus className="w-5 h-5" /> Tambah Pendaftar
@@ -942,8 +944,13 @@ export default function Admin() {
                           </span>
                         </div>
                         <p className="text-slate-500 font-medium">Admin: <span className="text-slate-900 font-bold">{reg.admin_name}</span> ({reg.admin_email})</p>
+                        <p className="text-slate-400 text-xs font-bold mt-1">WA: {reg.WA || '-'}</p>
                       </div>
                       <div className="flex gap-2">
+                        <div className={`p-2 rounded-xl flex items-center gap-2 ${reg.is_approved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                           <CheckCircle2 className="w-4 h-4" />
+                           <span className="text-[10px] font-black uppercase">{reg.is_approved ? 'Approved' : 'Unapproved'}</span>
+                        </div>
                         <button 
                           onClick={() => handleUpdateRegStatus(reg.id, reg.status === 'verified' ? 'pending' : 'verified')}
                           className={`p-2 rounded-xl transition-colors ${
@@ -1219,17 +1226,33 @@ export default function Admin() {
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Nama Admin Sekolah</label>
                   <input type="text" required value={editingRegistration.admin_name || ''} onChange={e => setEditingRegistration({ ...editingRegistration, admin_name: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
                 </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-black uppercase tracking-widest text-slate-400">Email Admin Sekolah</label>
                     <input type="email" required value={editingRegistration.admin_email || ''} onChange={e => setEditingRegistration({ ...editingRegistration, admin_email: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
                   </div>
+                  <div>
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">WhatsApp / HP (WA)</label>
+                    <input type="text" value={editingRegistration.WA || ''} onChange={e => setEditingRegistration({ ...editingRegistration, WA: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" placeholder="08xxxxxxxx" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-black uppercase tracking-widest text-slate-400">Status</label>
                     <select value={editingRegistration.status} onChange={e => setEditingRegistration({ ...editingRegistration, status: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold">
                         <option value="pending">Pending</option>
                         <option value="verified">Verified</option>
                     </select>
+                  </div>
+                  <div className="flex items-center gap-4 px-4 bg-slate-50 rounded-2xl">
+                    <input 
+                      type="checkbox" 
+                      id="is_approved"
+                      checked={editingRegistration.is_approved} 
+                      onChange={e => setEditingRegistration({ ...editingRegistration, is_approved: e.target.checked })}
+                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                    />
+                    <label htmlFor="is_approved" className="text-xs font-black uppercase tracking-widest text-slate-600 cursor-pointer">Approved (is_approved)</label>
                   </div>
                 </div>
                 <div className="flex gap-4 pt-4">
