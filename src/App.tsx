@@ -5,7 +5,6 @@ import TenantDashboard from './components/TenantDashboard';
 import AffiliatePortal from './components/AffiliatePortal';
 import SchoolLogin from './components/SchoolLogin';
 import RegisterSchool from './components/RegisterSchool';
-
 import ProtectedAdmin from './components/MasterAdmin/ProtectedAdmin';      // ← TAMBAHAN 1
 import ProtectedTenant from './components/TenantDashboard/ProtectedTenant'; // ← TAMBAHAN 2
 
