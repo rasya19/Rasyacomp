@@ -230,6 +230,7 @@ export default function RasyatechLanding() {
     whatsapp: waNumber,
     npsn: (currentForm.elements.namedItem('npsn') as HTMLInputElement)?.value || '-',
     subdomain: (currentForm.elements.namedItem('subdomain') as HTMLInputElement)?.value || '',
+    password: (currentForm.elements.namedItem('password') as HTMLInputElement)?.value || '',
     status: 'pending',
     is_approved: false
   };
