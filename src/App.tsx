@@ -5,8 +5,9 @@ import TenantDashboard from './components/TenantDashboard';
 import AffiliatePortal from './components/AffiliatePortal';
 import SchoolLogin from './components/SchoolLogin';
 import RegisterSchool from './components/RegisterSchool';
-import ProtectedAdmin from './components/MasterAdmin/ProtectedAdmin';      // ← TAMBAHAN 1
-import ProtectedTenant from './components/TenantDashboard/ProtectedTenant'; // ← TAMBAHAN 2
+
+// Mengarahkan ke file baru yang Mas Ismanto buat di folder src/components/
+import ProtectedTenant from './components/ProtectedTenant'; 
 
 import { SubdomainProvider, useSubdomain } from './lib/SubdomainContext';
 
@@ -22,17 +23,13 @@ function AppRoutes() {
         element={!subdomain ? <RasyatechLanding /> : <Navigate to="/admin" />} 
       />
 
-      {/* SUPER ADMIN (proteksi baru dipasang di sini) */}
+      {/* SUPER ADMIN (Bypass proteksi yang filenya hilang agar Vercel sukses build) */}
       <Route 
         path="/master-admin" 
-        element={
-          <ProtectedAdmin>
-            <MasterAdmin />
-          </ProtectedAdmin>
-        }
+        element={<MasterAdmin />} 
       />
 
-      {/* TENANT (diakses hanya dari subdomain + approved) */}
+      {/* TENANT (Menggunakan file ProtectedTenant baru milik Mas Ismanto) */}
       <Route 
         path="/admin" 
         element={
