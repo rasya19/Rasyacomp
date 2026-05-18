@@ -228,8 +228,7 @@ export default function RasyatechLanding() {
     status: 'pending',
     subdomain: subdomain,
     is_approved: false
-};
-};
+    };
 
     console.log("Attempting registration with data:", registrationData);
 
