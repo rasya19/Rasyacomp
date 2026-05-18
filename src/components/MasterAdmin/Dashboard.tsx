@@ -413,10 +413,14 @@ export default function Admin() {
 
   const handleSaveRegistration = async (e: FormEvent) => {
     e.preventDefault();
-    const data = editingRegistration;
+    const data = { ...editingRegistration };
+    
+    delete data.address; // Safe guard: address is no longer in DB
+    
     try {
         if (data.id) {
-            const { error } = await supabase.from('registrations').update(data).eq('id', data.id);
+            const { id, ...updateData } = data;
+            const { error } = await supabase.from('registrations').update(updateData).eq('id', id);
             if (error) throw error;
         } else {
              const { error } = await supabase.from('registrations').insert(data);
@@ -424,9 +428,11 @@ export default function Admin() {
         }
         setEditingRegistration(null);
         fetchRegistrations();
-    } catch (err) {
-      console.error(err);
-      setSaveStatus({ type: 'error', message: 'Gagal menyimpan pendaftar.' });
+        setSaveStatus({ type: 'success', message: 'Data pendaftar berhasil disimpan!' });
+        setTimeout(() => setSaveStatus(null), 3000);
+    } catch (err: any) {
+      console.error("Error saving registration:", err);
+      setSaveStatus({ type: 'error', message: 'Gagal menyimpan pendaftar: ' + (err.message || 'Error tidak diketahui') });
     }
   };
 
@@ -912,7 +918,7 @@ export default function Admin() {
                   <p className="text-slate-500 font-medium">Kelola pendaftaran sekolah baru dari landing page.</p>
                 </div>
                 <button 
-                  onClick={() => setEditingRegistration({ subdomain_prefix: '', school_name: '', npsn: '', admin_name: '', package: 'Silver Monthly', admin_email: '', address: '', status: 'verified', affiliate_email: '', commission: 0, contract_start: '', contract_end: '' })}
+                  onClick={() => setEditingRegistration({ subdomain_prefix: '', school_name: '', npsn: '', admin_name: '', package: 'Silver Monthly', admin_email: '', status: 'verified', affiliate_email: '', commission: 0, contract_start: '', contract_end: '' })}
                   className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl flex items-center gap-2 shadow-lg"
                 >
                   <Plus className="w-5 h-5" /> Tambah Pendaftar
@@ -963,10 +969,6 @@ export default function Admin() {
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Sekolah / NPSN</label>
                         <p className="font-bold text-slate-900">{reg.school_name}</p>
                         <p className="text-xs text-slate-500">NPSN: {reg.npsn || '-'}</p>
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Alamat</label>
-                        <p className="font-bold text-slate-900">{reg.address}</p>
                       </div>
                       <div>
                         <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Ekspektasi</label>
@@ -1221,10 +1223,6 @@ export default function Admin() {
                 <div>
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Nama Admin Sekolah</label>
                   <input type="text" required value={editingRegistration.admin_name || ''} onChange={e => setEditingRegistration({ ...editingRegistration, admin_name: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
-                </div>
-                <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Alamat</label>
-                  <textarea required value={editingRegistration.address} onChange={e => setEditingRegistration({ ...editingRegistration, address: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold h-24" />
                 </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
