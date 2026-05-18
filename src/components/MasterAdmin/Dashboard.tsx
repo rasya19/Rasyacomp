@@ -420,7 +420,7 @@ export default function Admin() {
       school_name: editingRegistration.school_name,
       admin_name: editingRegistration.admin_name,
       admin_email: editingRegistration.admin_email,
-      WA: editingRegistration.WA,
+      whatsapp: editingRegistration.whatsapp,
       status: editingRegistration.status || 'pending',
       subdomain: editingRegistration.subdomain || '',
       is_approved: !!editingRegistration.is_approved
