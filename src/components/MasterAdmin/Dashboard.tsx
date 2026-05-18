@@ -350,7 +350,7 @@ export default function Admin() {
         console.log("API response:", data);
 
         await handleUpdateRegStatus(verifyingReg.id, 'verified');
-        await supabase.from('registrations').update({ subdomain_prefix: subdomain }).eq('id', verifyingReg.id);
+        await supabase.from('registrations').update({ subdomain: subdomain }).eq('id', verifyingReg.id);
         setVerifyingReg(null);
         setSubdomain('');
         setSaveStatus({ type: 'success', message: 'Verifikasi berhasil!' });
@@ -413,18 +413,23 @@ export default function Admin() {
 
   const handleSaveRegistration = async (e: FormEvent) => {
     e.preventDefault();
-    const data = { ...editingRegistration };
     
-    delete data.address; // Safe guard: address is no longer in DB
-    delete data.affiliate_email; // Safe guard: affiliate_email is no longer in DB
+    // STRICT PAYLOAD - only columns confirmed by user
+    const payload: any = {
+      school_name: editingRegistration.school_name,
+      npsn: editingRegistration.npsn,
+      admin_name: editingRegistration.admin_name,
+      admin_email: editingRegistration.admin_email,
+      status: editingRegistration.status || 'pending',
+      subdomain: editingRegistration.subdomain || ''
+    };
     
     try {
-        if (data.id) {
-            const { id, ...updateData } = data;
-            const { error } = await supabase.from('registrations').update(updateData).eq('id', id);
+        if (editingRegistration.id) {
+            const { error } = await supabase.from('registrations').update(payload).eq('id', editingRegistration.id);
             if (error) throw error;
         } else {
-             const { error } = await supabase.from('registrations').insert(data);
+             const { error } = await supabase.from('registrations').insert([payload]);
              if (error) throw error;
         }
         setEditingRegistration(null);
@@ -919,7 +924,7 @@ export default function Admin() {
                   <p className="text-slate-500 font-medium">Kelola pendaftaran sekolah baru dari landing page.</p>
                 </div>
                 <button 
-                  onClick={() => setEditingRegistration({ subdomain_prefix: '', school_name: '', npsn: '', admin_name: '', package: 'Silver Monthly', admin_email: '', status: 'verified', affiliate_email: '', commission: 0, contract_start: '', contract_end: '' })}
+                  onClick={() => setEditingRegistration({ school_name: '', npsn: '', admin_name: '', admin_email: '', status: 'pending', subdomain: '' })}
                   className="px-6 py-3 bg-indigo-600 text-white font-black rounded-2xl flex items-center gap-2 shadow-lg"
                 >
                   <Plus className="w-5 h-5" /> Tambah Pendaftar
@@ -931,28 +936,29 @@ export default function Admin() {
                   <div key={reg.id} className="bg-white rounded-[32px] border border-slate-100 p-8 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex flex-wrap justify-between items-start gap-4 mb-6">
                       <div>
-                        <div className="flex items-center gap-3 mb-2">
-                          <h4 className="text-xl font-black">{reg.school_name}</h4>
-                          <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                            reg.status === 'pending' ? 'bg-amber-100 text-amber-600' : 
-                            reg.status === 'verified' ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-600'
-                          }`}>
-                            {reg.status}
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <span className="px-3 py-1 bg-slate-100 rounded-lg text-xs font-bold text-slate-600">
+                             URL: {reg.subdomain || '-'}.rsch.my.id
                           </span>
                         </div>
-                        <p className="text-slate-500 font-bold flex items-center gap-2">
-                          <Package className="w-4 h-4" /> {reg.package}
-                        </p>
+                        <p className="text-slate-500 font-medium">Admin: <span className="text-slate-900 font-bold">{reg.admin_name}</span> ({reg.admin_email})</p>
                       </div>
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => setVerifyingReg(reg)}
-                          className={`px-4 py-2 rounded-xl font-black text-xs flex items-center gap-2 ${
-                            reg.status === 'verified' ? 'bg-slate-100 text-slate-600' : 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
+                          onClick={() => handleUpdateRegStatus(reg.id, reg.status === 'verified' ? 'pending' : 'verified')}
+                          className={`p-2 rounded-xl transition-colors ${
+                            reg.status === 'verified' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
                           }`}
                         >
                           {reg.status === 'verified' ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                          {reg.status === 'verified' ? 'Batalkan Verifikasi' : 'Verifikasi'}
+                        </button>
+                        <button 
+                          onClick={() => setVerifyingReg(reg)}
+                          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            reg.status === 'verified' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'
+                          }`}
+                        >
+                          {reg.status === 'verified' ? 'Manage Access' : 'Verify Now'}
                         </button>
                         <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors">
                           <Trash2 className="w-5 h-5" />
@@ -972,24 +978,12 @@ export default function Admin() {
                         <p className="text-xs text-slate-500">NPSN: {reg.npsn || '-'}</p>
                       </div>
                       <div>
-                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Ekspektasi</label>
-                        <p className="font-bold text-indigo-600">{reg.package}</p>
-                        <p className="text-xs text-slate-500">Affiliate: {reg.affiliate_email || 'Langsung'}</p>
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Status</label>
+                        <p className="font-bold text-indigo-600 uppercase tracking-tighter">{reg.status}</p>
                       </div>
                     </div>
                     <div className="mt-4 flex gap-2">
-                       <button onClick={() => setEditingRegistration(reg)} className="text-indigo-600 font-black text-xs px-4 py-2 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">Edit Data & Kontrak</button>
-                       <input 
-                         type="number" 
-                         placeholder="Komisi (Rp)" 
-                         className="p-2 border rounded-lg text-sm font-bold w-32"
-                         value={reg.commission || ''}
-                         onChange={async (e) => {
-                           const val = e.target.value;
-                           await supabase.from('registrations').update({ commission: Number(val) || 0 }).eq('id', reg.id);
-                           fetchRegistrations();
-                         }}
-                       />
+                       <button onClick={() => setEditingRegistration(reg)} className="text-indigo-600 font-black text-xs px-4 py-2 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors">Edit Data Pendaftar</button>
                     </div>
                   </div>
                 ))}
@@ -1210,8 +1204,8 @@ export default function Admin() {
               <h3 className="text-3xl font-black mb-8">Tambah / Edit Pendaftar</h3>
               <form onSubmit={handleSaveRegistration} className="space-y-6">
                 <div>
-                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Subdomain Prefix (cth: sekolah1)</label>
-                  <input type="text" required value={editingRegistration.subdomain_prefix || ''} onChange={e => setEditingRegistration({ ...editingRegistration, subdomain_prefix: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-400">Subdomain (cth: sekolah1)</label>
+                  <input type="text" required value={editingRegistration.subdomain || ''} onChange={e => setEditingRegistration({ ...editingRegistration, subdomain: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
                 </div>
                 <div>
                   <label className="text-xs font-black uppercase tracking-widest text-slate-400">Nama Sekolah / Instansi</label>
@@ -1231,30 +1225,11 @@ export default function Admin() {
                     <input type="email" required value={editingRegistration.admin_email || ''} onChange={e => setEditingRegistration({ ...editingRegistration, admin_email: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
                   </div>
                   <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Paket</label>
-                    <select value={editingRegistration.package} onChange={e => setEditingRegistration({ ...editingRegistration, package: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold">
-                      <option value="Silver Monthly">Silver (Bulanan)</option>
-                      <option value="Gold Monthly">Gold (Bulanan)</option>
-                      <option value="Platinum">Platinum (Custom)</option>
-                      <option value="Silver (Annual Promo)">Silver (Annual Promo)</option>
-                      <option value="Gold (Annual Promo)">Gold (Annual Promo)</option>
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Status</label>
+                    <select value={editingRegistration.status} onChange={e => setEditingRegistration({ ...editingRegistration, status: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold">
+                        <option value="pending">Pending</option>
+                        <option value="verified">Verified</option>
                     </select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Mulai Kontrak</label>
-                    <input type="date" value={editingRegistration.contract_start || ''} onChange={e => setEditingRegistration({ ...editingRegistration, contract_start: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
-                  </div>
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Habis Kontrak</label>
-                    <input type="date" value={editingRegistration.contract_end || ''} onChange={e => setEditingRegistration({ ...editingRegistration, contract_end: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Komisi (Rp)</label>
-                    <input type="number" value={editingRegistration.commission} onChange={e => setEditingRegistration({ ...editingRegistration, commission: Number(e.target.value) })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
                   </div>
                 </div>
                 <div className="flex gap-4 pt-4">

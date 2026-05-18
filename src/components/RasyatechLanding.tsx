@@ -220,17 +220,12 @@ export default function RasyatechLanding() {
 
     // Save to Supabase (Background / Non-blocking)
     const registrationData: any = {
-      package: pkg,
       school_name: school,
-      // Removed 'address' because it caused PGRST204 (column not found) in Supabase
       admin_email: email,
       admin_name: school,
       npsn: '0',
       status: 'pending',
-      contract_start: contractStart,
-      contract_end: contractEndDate,
-      commission: 0,
-      subdomain_prefix: ''
+      subdomain: ''
     };
 
     console.log("Attempting registration with data:", registrationData);
