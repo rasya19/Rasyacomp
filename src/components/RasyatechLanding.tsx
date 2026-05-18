@@ -219,17 +219,16 @@ export default function RasyatechLanding() {
     }
     const contractEndDate = contractEnd.toISOString().split('T')[0];
 
-    // Save to Supabase (Background / Non-blocking)
     const registrationData: any = {
-      school_name: school,
-      admin_email: email,
-      admin_name: school,
-      WA: waNumber,
-      npsn: '0',
-      status: 'pending',
-      subdomain: '',
-      is_approved: false
-    };
+  school_name: school,
+  admin_email: email,
+  admin_name: school,
+  whatsapp: waNumber,
+  npsn: '0',
+  status: 'pending',
+  subdomain: '',
+  is_approved: false
+};
 
     console.log("Attempting registration with data:", registrationData);
 
