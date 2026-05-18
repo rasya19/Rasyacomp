@@ -229,7 +229,6 @@ export default function RasyatechLanding() {
       status: 'pending',
       contract_start: contractStart,
       contract_end: contractEndDate,
-      affiliate_email: affiliateEmail || '',
       commission: 0,
       subdomain_prefix: ''
     };

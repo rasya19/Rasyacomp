@@ -416,6 +416,7 @@ export default function Admin() {
     const data = { ...editingRegistration };
     
     delete data.address; // Safe guard: address is no longer in DB
+    delete data.affiliate_email; // Safe guard: affiliate_email is no longer in DB
     
     try {
         if (data.id) {
@@ -1251,10 +1252,6 @@ export default function Admin() {
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Email Affiliate (Opsional)</label>
-                    <input type="email" value={editingRegistration.affiliate_email || ''} onChange={e => setEditingRegistration({ ...editingRegistration, affiliate_email: e.target.value })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
-                  </div>
                   <div>
                     <label className="text-xs font-black uppercase tracking-widest text-slate-400">Komisi (Rp)</label>
                     <input type="number" value={editingRegistration.commission} onChange={e => setEditingRegistration({ ...editingRegistration, commission: Number(e.target.value) })} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
