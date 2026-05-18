@@ -4,7 +4,11 @@ import MasterAdmin from './components/MasterAdmin/Dashboard';
 import TenantDashboard from './components/TenantDashboard';
 import AffiliatePortal from './components/AffiliatePortal';
 import SchoolLogin from './components/SchoolLogin';
-import RegisterSchool from './components/RegisterSchool'; // ← IMPORT BARU
+import RegisterSchool from './components/RegisterSchool';
+
+import ProtectedAdmin from './components/MasterAdmin/ProtectedAdmin';      // ← TAMBAHAN 1
+import ProtectedTenant from './components/TenantDashboard/ProtectedTenant'; // ← TAMBAHAN 2
+
 import { SubdomainProvider, useSubdomain } from './lib/SubdomainContext';
 
 function AppRoutes() {
@@ -12,35 +16,46 @@ function AppRoutes() {
 
   return (
     <Routes>
-      {/* Landing Page only on main domain */}
+
+      {/* Landing Page */}
       <Route 
         path="/" 
         element={!subdomain ? <RasyatechLanding /> : <Navigate to="/admin" />} 
       />
 
-      {/* SuperAdmin/MasterAdmin only on main domain */}
+      {/* SUPER ADMIN (proteksi baru dipasang di sini) */}
       <Route 
         path="/master-admin" 
-        element={!subdomain ? <MasterAdmin /> : <Navigate to="/admin" />} 
+        element={
+          <ProtectedAdmin>
+            <MasterAdmin />
+          </ProtectedAdmin>
+        }
       />
 
-      {/* Tenant Admin only on subdomains */}
+      {/* TENANT (diakses hanya dari subdomain + approved) */}
       <Route 
         path="/admin" 
-        element={subdomain ? <TenantDashboard /> : <Navigate to="/master-admin" />} 
+        element={
+          <ProtectedTenant>
+            <TenantDashboard />
+          </ProtectedTenant>
+        }
       />
 
+      {/* Affiliate */}
       <Route 
         path="/affiliate/portal" 
         element={!subdomain ? <AffiliatePortal /> : <Navigate to="/admin" />} 
       />
 
+      {/* Login Sekolah */}
       <Route 
         path="/login-sekolah" 
         element={subdomain ? <SchoolLogin /> : <Navigate to="/" />} 
       />
 
-      {/* ⭐ Route BARU: Pendaftaran Sekolah */}
+      {/* Form Pendaftaran Sekolah */}
       <Route 
         path="/daftar-sekolah" 
         element={<RegisterSchool />} 
@@ -48,6 +63,7 @@ function AppRoutes() {
 
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" />} />
+
     </Routes>
   );
 }
