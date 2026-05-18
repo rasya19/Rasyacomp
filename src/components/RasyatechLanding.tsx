@@ -220,14 +220,15 @@ export default function RasyatechLanding() {
     const contractEndDate = contractEnd.toISOString().split('T')[0];
 
     const registrationData: any = {
-  school_name: school,
-  admin_email: email,
-  admin_name: school,
-  whatsapp: waNumber,
-  npsn: '0',
-  status: 'pending',
-  subdomain: '',
-  is_approved: false
+    school_name: school,
+    admin_email: email,
+    admin_name: school,
+    whatsapp: waNumber,
+    npsn: formData.npsn,
+    status: 'pending',
+    subdomain: subdomain,
+    is_approved: false
+};
 };
 
     console.log("Attempting registration with data:", registrationData);
