@@ -17,7 +17,7 @@ export default function TeachersTable({ schoolId }: { schoolId: string }) {
     setLoading(true);
     const { data, error } = await supabase
       .from('teachers')
-      .select('*') 
+      .select('*')
       .eq('school_id', schoolId);
     
     if (error) {

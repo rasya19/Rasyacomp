@@ -4,11 +4,6 @@ import MasterAdmin from './components/MasterAdmin/Dashboard';
 import TenantDashboard from './components/TenantDashboard';
 import AffiliatePortal from './components/AffiliatePortal';
 import SchoolLogin from './components/SchoolLogin';
-import RegisterSchool from './components/RegisterSchool';
-
-// Mengarahkan ke file baru yang Mas Ismanto buat di folder src/components/
-import ProtectedTenant from './components/ProtectedTenant'; 
-
 import { SubdomainProvider, useSubdomain } from './lib/SubdomainContext';
 
 function AppRoutes() {
@@ -16,50 +11,32 @@ function AppRoutes() {
 
   return (
     <Routes>
-
-      {/* Landing Page */}
-      <Route 
-        path="/" 
-        element={!subdomain ? <RasyatechLanding /> : <Navigate to="/admin" />} 
-      />
-
-      {/* SUPER ADMIN (Bypass proteksi yang filenya hilang agar Vercel sukses build) */}
+      {/* Landing Page only on main domain */}
+      <Route path="/" element={!subdomain ? <RasyatechLanding /> : <Navigate to="/admin" />} />
+      
+      {/* SuperAdmin/MasterAdmin only on main domain */}
       <Route 
         path="/master-admin" 
-        element={<MasterAdmin />} 
+        element={!subdomain ? <MasterAdmin /> : <Navigate to="/admin" />} 
       />
-
-      {/* TENANT (Menggunakan file ProtectedTenant baru milik Mas Ismanto) */}
+      
+      {/* Tenant Admin only on subdomains */}
       <Route 
         path="/admin" 
-        element={
-          <ProtectedTenant>
-            <TenantDashboard />
-          </ProtectedTenant>
-        }
+        element={subdomain ? <TenantDashboard /> : <Navigate to="/master-admin" />} 
       />
-
-      {/* Affiliate */}
+      
       <Route 
         path="/affiliate/portal" 
         element={!subdomain ? <AffiliatePortal /> : <Navigate to="/admin" />} 
       />
-
-      {/* Login Sekolah */}
       <Route 
         path="/login-sekolah" 
         element={subdomain ? <SchoolLogin /> : <Navigate to="/" />} 
       />
-
-      {/* Form Pendaftaran Sekolah */}
-      <Route 
-        path="/daftar-sekolah" 
-        element={<RegisterSchool />} 
-      />
-
+      
       {/* Catch-all */}
       <Route path="*" element={<Navigate to="/" />} />
-
     </Routes>
   );
 }

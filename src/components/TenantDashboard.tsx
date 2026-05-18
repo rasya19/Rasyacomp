@@ -1,11 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import SchoolLogin from './SchoolLogin';
-
-// JALUR SUDAH DI-FIX (Keluar satu folder dulu ke src/components/ baru panggil filenya)
-import TeachersTable from '../DataGuru'; 
-import StudentsTable from '../studentstable';
-
+import TeachersTable from './TeachersTable';
+import StudentsTable from './StudentsTable';
 import { LayoutDashboard, Users, BookOpen, Settings, Loader2, School } from 'lucide-react';
 
 export default function TenantDashboard() {
