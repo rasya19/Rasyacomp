@@ -217,18 +217,22 @@ export default function RasyatechLanding() {
     } else {
       contractEnd.setMonth(contractEnd.getMonth() + 1);
     }
-    const contractEndDate = contractEnd.toISOString().split('T')[0];
+   const contractEndDate = contractEnd.toISOString().split('T')[0];
 
-    const registrationData: any = {
+  // 1. Buat pembaca data form HTML yang aktif
+  const currentForm = e.currentTarget as HTMLFormElement;
+
+  // 2. Susun data pendaftaran dengan mengambil langsung dari name HTML
+  const registrationData: any = {
     school_name: school,
     admin_email: email,
     admin_name: school,
     whatsapp: waNumber,
-    npsn: formData.npsn,
+    npsn: (currentForm.elements.namedItem('npsn') as HTMLInputElement)?.value || '-',
+    subdomain: (currentForm.elements.namedItem('subdomain') as HTMLInputElement)?.value || '',
     status: 'pending',
-    subdomain: subdomain,
     is_approved: false
-    };
+  };
 
     console.log("Attempting registration with data:", registrationData);
 
