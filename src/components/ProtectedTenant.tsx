@@ -1,5 +1,5 @@
 import { Navigate } from "react-router-dom";
-import { useTenantAuth } from "../../lib/useTenantAuth";
+import { useTenantAuth } from '../lib/useTenantAuth';
 import { useSubdomain } from "../../lib/SubdomainContext";
 
 export default function ProtectedTenant({ children }) {
