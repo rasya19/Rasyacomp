@@ -634,8 +634,12 @@ export default function RasyatechLanding() {
               <input type="text" name="school_name" required placeholder="Contoh: PKBM Armilla Nusa" />
             </div>
             <div className="form-group">
+              <label>Nama Sekolah / Instansi</label>
+              <input type="text" name="school_name" required placeholder="Contoh: PKBM Armilla Nusa" />
+            </div>
+            <div className="form-group">
               <label>NPSN Sekolah</label>
-              <input type="text" name="npsn" required placeholder="Contoh: P9984421" />
+              <input type="text" name="npsn" placeholder="Contoh: P9984421" /> {/* <- HAPUS REQUIRED NYA */}
             </div>
             <div className="form-group">
               <label>Alamat Sekolah</label>
@@ -651,7 +655,7 @@ export default function RasyatechLanding() {
             </div>
             <div className="form-group">
               <label>Subdomain LMS yang Diinginkan</label>
-              <input type="text" name="subdomain" required placeholder="Contoh: armillanusa" />
+              <input type="text" name="subdomain" placeholder="Contoh: armillanusa" /> {/* <- HAPUS REQUIRED NYA */}
             </div>
             <div className="form-group">
               <label>Password Admin (Nantinya)</label>
