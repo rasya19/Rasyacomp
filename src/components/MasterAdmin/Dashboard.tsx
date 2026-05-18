@@ -421,7 +421,7 @@ export default function Admin() {
       admin_name: editingRegistration.admin_name,
       admin_email: editingRegistration.admin_email,
       whatsapp: editingRegistration.whatsapp,
-      status: editingRegistration.status || 'pending',
+      status: editingRegistration.is_approved ? 'approved' : 'pending',
       subdomain: editingRegistration.subdomain || '',
       is_approved: !!editingRegistration.is_approved
     };
