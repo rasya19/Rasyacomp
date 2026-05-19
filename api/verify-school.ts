@@ -73,11 +73,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     }
 
-    // Update registration dengan auth_uid (Kode asli bawaan Mas)
+ 
+    const activationDate = new Date();
+    const expiredDate = new Date();
+    expiredDate.setFullYear(activationDate.getFullYear() + 1); 
+
+    // Update registration dengan auth_uid, status, dan data masa aktif baru
     const { error: dbError } = await adminSupabase
       .from('registrations')
-      .update({ auth_uid: userData.user.id, status: 'verified' })
+      .update({ 
+        auth_uid: userData.user.id, 
+        status: 'verified',
+        activated_at: activationDate.toISOString(), // Masuk ke kolom baru di Supabase
+        expired_at: expiredDate.toISOString()       // Masuk ke kolom baru di Supabase
+      })
       .eq('admin_email', email);
+    // ======================================================================
 
     if (dbError) {
         console.error("Failed to update registration with auth_uid:", dbError);
