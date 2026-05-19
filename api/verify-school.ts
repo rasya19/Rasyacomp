@@ -78,6 +78,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const expiredDate = new Date();
     expiredDate.setFullYear(activationDate.getFullYear() + 1); 
 
+    // Update registration dengan auth_uid, status, dan data masa aktif baru
     const { error: dbError } = await adminSupabase
       .from('registrations')
       .update({ 
@@ -90,31 +91,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (dbError) {
       console.error("Gagal update registrations:", dbError);
+      return res.status(500).json({ error: "Gagal update status pendaftaran: " + dbError.message });
     }
+
+    // OTOMATIS INSERT KE TABEL schools (Multi-tenant foundation)
     const finalSubdomain = subdomain || '-';
-    
     const { error: schoolError } = await adminSupabase
       .from('schools')
       .insert([{
-        id: finalSubdomain,              // Menggunakan 'nfallah' sebagai ID/Slug Sekolah
+        id: finalSubdomain,              // Subdomain digunakan sebagai ID/Slug unik sekolah
         name: school_name || 'Sekolah Baru', 
-        is_active: true,                  // Langsung diaktifkan otomatis
+        is_active: true,                  
         created_at: activationDate.toISOString()
       }]);
 
     if (schoolError) {
       console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
-      // Jika di tabel schools Mas kolom primary key-nya bukan 'id' melainkan 'slug', 
-      // silakan ganti bagian `id: finalSubdomain` di atas menjadi `slug: finalSubdomain`
+      // Jika eror karena duplikat ID, mungkin sekolah sudah ada, kita log tapi lanjut saja
+      if (!schoolError.message.includes('duplicate key')) {
+         return res.status(500).json({ error: "Gagal membuat data schools: " + schoolError.message });
+      }
     }
     // ======================================================================
-
-    if (dbError) {
-        console.error("Failed to update registration with auth_uid:", dbError);
-        return res.status(500).json({ error: dbError.message });
-    }
-
-    return res.status(200).json({ message: "Verifikasi berhasil!", password: generatedPassword });
 
     // 6. KONFIGURASI PENGIRIMAN EMAIL (NODEMAILER)
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
@@ -143,7 +141,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ 
         success: true, 
         message: "Verifikasi berhasil dan email terkirim",
-        user: userData.user 
+        user: userData.user,
+        password: generatedPassword 
     });
 
   } catch (error: any) {
