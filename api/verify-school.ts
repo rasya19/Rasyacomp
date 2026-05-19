@@ -67,20 +67,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return res.status(500).json({ error: "Gagal membuat data profiles: " + profileError.message });
       }
 
-      // B. OTOMATIS MASUKKAN DATA KE TABEL `school_admins`
-      const { error: schoolAdminError } = await adminSupabase
-        .from('school_admins')
-        .insert([{
-          user_id: newUserId,
-          subdomain: subdomain,
-          school_name: school_name
-        }]);
-
-      if (schoolAdminError) {
-        console.error("Gagal otomatis menyisipkan ke tabel school_admins:", schoolAdminError);
-        return res.status(500).json({ error: "Gagal membuat data school_admins: " + schoolAdminError.message });
+      if (profileError) {
+        console.error("Gagal otomatis menyisipkan ke tabel profiles:", profileError);
+        throw profileError;
       }
-    }
+    } // ◄── Ini kurung kurawal penutup dari "if (userData?.user)" Mas yang di atas
+
+    // 👇 SEKARANG LANGSUNG NYAMBUNG KE KODE ASLI MAS YANG INI (Baris 84 ke bawah)
+    // Update registration with auth_uid
+    const { error: dbError } = await adminSupabase
+      .from('registrations')
+      .update({ auth_uid: userData.user.id, status: 'verified' })
+      .eq('admin_email', email);
     // Update registration with auth_uid
     const { error: dbError } = await adminSupabase
       .from('registrations')
