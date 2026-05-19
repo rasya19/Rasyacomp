@@ -962,10 +962,16 @@ export default function Admin() {
                         >
                           {reg.status === 'verified' ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
                         </button>
-                        <button 
-                          onClick={() => setVerifyingReg(reg)}
-                          className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                            reg.status === 'verified' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-500'
+                        <button
+                          onClick={() => {
+                          // 1. Set data pendaftar aktif agar state penampung terisi
+                          setVerifyingReg(reg);
+                          
+                          // 2. Panggil fungsi bawaan Mas dengan memasukkan data subdomain bawaan pendaftar!
+                          handleVerifySchool(reg.subdomain);
+                        }}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                            reg.status === 'verified' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                           }`}
                         >
                           {reg.status === 'verified' ? 'Manage Access' : 'Verify Now'}
