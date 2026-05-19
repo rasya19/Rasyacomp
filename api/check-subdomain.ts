@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { data, error } = await adminSupabase
       .from('registrations')
       .select('*')
-      .eq('subdomain_prefix', subdomain)
+      .eq('subdomain', subdomain)
       .eq('status', 'verified')
       .single();
 

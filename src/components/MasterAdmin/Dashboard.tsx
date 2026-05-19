@@ -321,14 +321,19 @@ export default function Admin() {
   const [verifyingReg, setVerifyingReg] = useState<any>(null);
   const [subdomain, setSubdomain] = useState('');
 
-  const handleVerifySchool = async (subdomain: string) => {
+  const handleVerifySchool = async (inputSubdomain: string) => {
     if (!verifyingReg) return;
+    
+    if (!inputSubdomain || inputSubdomain === '-') {
+      setSaveStatus({ type: 'error', message: 'Subdomain belum diisi! Silakan edit data pendaftar terlebih dahulu.' });
+      return;
+    }
     
     try {
       console.log("Calling /api/verify-school with:", {
         email: verifyingReg.admin_email,
         school_name: verifyingReg.school_name,
-        subdomain: verifyingReg.subdomain,
+        subdomain: inputSubdomain,
         whatsapp: verifyingReg.whatsapp    
       });
 
@@ -338,7 +343,7 @@ export default function Admin() {
       body: JSON.stringify({
         email: verifyingReg.admin_email,
         school_name: verifyingReg.school_name,
-        subdomain: verifyingReg.subdomain, 
+        subdomain: inputSubdomain, 
         whatsapp: verifyingReg.whatsapp
       }),
     });

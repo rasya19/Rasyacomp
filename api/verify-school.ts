@@ -95,22 +95,43 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // OTOMATIS INSERT KE TABEL schools (Multi-tenant foundation)
-    const finalSubdomain = subdomain || '-';
-    const { error: schoolError } = await adminSupabase
-      .from('schools')
-      .insert([{
-        id: finalSubdomain,              // Subdomain digunakan sebagai ID/Slug unik sekolah
-        name: school_name || 'Sekolah Baru', 
-        is_active: true,                  
-        created_at: activationDate.toISOString()
-      }]);
-
-    if (schoolError) {
-      console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
-      // Jika eror karena duplikat ID, mungkin sekolah sudah ada, kita log tapi lanjut saja
-      if (!schoolError.message.includes('duplicate key')) {
-         return res.status(500).json({ error: "Gagal membuat data schools: " + schoolError.message });
+    let schoolSubdomain = subdomain;
+    
+    // Fallback: Jika di body kosong, coba ambil dari data pendaftaran yang baru saja di-update
+    if (!schoolSubdomain) {
+      console.log("Subdomain missing in request body, fetching from registration record...");
+      const { data: regData } = await adminSupabase
+        .from('registrations')
+        .select('subdomain')
+        .eq('admin_email', email)
+        .single();
+      if (regData?.subdomain) {
+        schoolSubdomain = regData.subdomain;
       }
+    }
+
+    if (schoolSubdomain && schoolSubdomain !== '-') {
+      console.log(`Attempting to insert school: ${schoolSubdomain} (${school_name})`);
+      const { error: schoolError } = await adminSupabase
+        .from('schools')
+        .insert([{
+          id: schoolSubdomain,              
+          name: school_name || 'Sekolah Baru', 
+          is_active: true,                  
+          created_at: activationDate.toISOString()
+        }]);
+  
+      if (schoolError) {
+        console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
+        // Jika eror bukan karena duplikat ID, kita return 500
+        if (!schoolError.message.includes('duplicate key')) {
+           return res.status(500).json({ error: "Gagal membuat data schools: " + schoolError.message });
+        }
+      } else {
+        console.log(`Successfully inserted/found school: ${schoolSubdomain}`);
+      }
+    } else {
+      console.warn("Subdomain is still empty or '-', skipping school table insertion");
     }
     // ======================================================================
 
