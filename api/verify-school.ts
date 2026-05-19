@@ -19,7 +19,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email, school_name, subdomain } = req.body;
+  const { email, school_name, subdomain, whatsapp } = req.body;
   
   // 4. VALIDASI KONFIGURASI SERVER (ENV)
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.SUPABASE_URL) {
@@ -46,7 +46,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (userError) {
         return res.status(400).json({ error: userError.message });
     }
+    if (userData?.user) {
+      const newUserId = userData.user.id;
 
+      // A. OTOMATIS MASUKKAN DATA KE TABEL `profiles`
+      const { error: profileError } = await adminSupabase
+        .from('profiles')
+        .insert([{
+          id: newUserId,
+          email: email,
+          role: 'admin_sekolah', // Menandakan dia admin sekolah, bukan super admin
+          subdomain: subdomain,
+          whatsapp: whatsapp || '-',
+          is_approved: true,
+          updated_at: new Date().toISOString()
+        }]);
+
+      if (profileError) {
+        console.error("Gagal otomatis menyisipkan ke tabel profiles:", profileError);
+        return res.status(500).json({ error: "Gagal membuat data profiles: " + profileError.message });
+      }
+
+      // B. OTOMATIS MASUKKAN DATA KE TABEL `school_admins`
+      const { error: schoolAdminError } = await adminSupabase
+        .from('school_admins')
+        .insert([{
+          user_id: newUserId,
+          subdomain: subdomain,
+          school_name: school_name
+        }]);
+
+      if (schoolAdminError) {
+        console.error("Gagal otomatis menyisipkan ke tabel school_admins:", schoolAdminError);
+        return res.status(500).json({ error: "Gagal membuat data school_admins: " + schoolAdminError.message });
+      }
+    }
     // Update registration with auth_uid
     const { error: dbError } = await adminSupabase
       .from('registrations')
