@@ -78,16 +78,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const expiredDate = new Date();
     expiredDate.setFullYear(activationDate.getFullYear() + 1); 
 
-    // Update registration dengan auth_uid, status, dan data masa aktif baru
     const { error: dbError } = await adminSupabase
       .from('registrations')
       .update({ 
         auth_uid: userData.user.id, 
         status: 'verified',
-        activated_at: activationDate.toISOString(), // Masuk ke kolom baru di Supabase
-        expired_at: expiredDate.toISOString()       // Masuk ke kolom baru di Supabase
+        activated_at: activationDate.toISOString(),
+        expired_at: expiredDate.toISOString()
       })
       .eq('admin_email', email);
+
+    if (dbError) {
+      console.error("Gagal update registrations:", dbError);
+    }
+    const finalSubdomain = subdomain || '-';
+    
+    const { error: schoolError } = await adminSupabase
+      .from('schools')
+      .insert([{
+        id: finalSubdomain,              // Menggunakan 'nfallah' sebagai ID/Slug Sekolah
+        name: school_name || 'Sekolah Baru', 
+        is_active: true,                  // Langsung diaktifkan otomatis
+        created_at: activationDate.toISOString()
+      }]);
+
+    if (schoolError) {
+      console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
+      // Jika di tabel schools Mas kolom primary key-nya bukan 'id' melainkan 'slug', 
+      // silakan ganti bagian `id: finalSubdomain` di atas menjadi `slug: finalSubdomain`
+    }
     // ======================================================================
 
     if (dbError) {
