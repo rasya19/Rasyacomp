@@ -46,18 +46,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (userError) {
         return res.status(400).json({ error: userError.message });
     }
+
+    // 👇 JALUR OTOMATISASI AMAN (HANYA MENGISI TABEL PROFILES)
     if (userData?.user) {
       const newUserId = userData.user.id;
 
-      // A. OTOMATIS MASUKKAN DATA KE TABEL `profiles`
+      // Ambil data kiriman, kalau front-end ngirim kosong, otomatis diisi strip '-' agar database tidak eror
+      const finalSubdomain = subdomain || '-';
+      const finalWhatsapp = whatsapp || '-';
+
       const { error: profileError } = await adminSupabase
         .from('profiles')
         .insert([{
           id: newUserId,
           email: email,
-          role: 'admin_sekolah', // Menandakan dia admin sekolah, bukan super admin
-          subdomain: subdomain,
-          whatsapp: whatsapp || '-',
+          role: 'admin_sekolah',
+          subdomain: finalSubdomain,
+          whatsapp: finalWhatsapp,
           is_approved: true,
           updated_at: new Date().toISOString()
         }]);
@@ -66,20 +71,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         console.error("Gagal otomatis menyisipkan ke tabel profiles:", profileError);
         return res.status(500).json({ error: "Gagal membuat data profiles: " + profileError.message });
       }
+    }
 
-      if (profileError) {
-        console.error("Gagal otomatis menyisipkan ke tabel profiles:", profileError);
-        throw profileError;
-      }
-    } // ◄── Ini kurung kurawal penutup dari "if (userData?.user)" Mas yang di atas
-
-    // 👇 SEKARANG LANGSUNG NYAMBUNG KE KODE ASLI MAS YANG INI (Baris 84 ke bawah)
-    // Update registration with auth_uid
-    const { error: dbError } = await adminSupabase
-      .from('registrations')
-      .update({ auth_uid: userData.user.id, status: 'verified' })
-      .eq('admin_email', email);
-    // Update registration with auth_uid
+    // Update registration dengan auth_uid (Kode asli bawaan Mas)
     const { error: dbError } = await adminSupabase
       .from('registrations')
       .update({ auth_uid: userData.user.id, status: 'verified' })
@@ -87,9 +81,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (dbError) {
         console.error("Failed to update registration with auth_uid:", dbError);
-        // We might want to delete the user if DB update fails to keep things consistent,
-        // but for now, we'll just log it.
+        return res.status(500).json({ error: dbError.message });
     }
+
+    return res.status(200).json({ message: "Verifikasi berhasil!", password: generatedPassword });
 
     // 6. KONFIGURASI PENGIRIMAN EMAIL (NODEMAILER)
     if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {

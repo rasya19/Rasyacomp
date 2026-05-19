@@ -325,20 +325,23 @@ export default function Admin() {
     if (!verifyingReg) return;
     
     try {
-        console.log("Calling /api/verify-school with:", {
-            email: verifyingReg.admin_email,
-            school_name: verifyingReg.school_name,
-            subdomain
-        });
-        const response = await fetch('/api/verify-school', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                email: verifyingReg.admin_email,
-                school_name: verifyingReg.school_name,
-                subdomain
-            })
-        });
+      console.log("Calling /api/verify-school with:", {
+        email: verifyingReg.admin_email,
+        school_name: verifyingReg.school_name,
+        subdomain: verifyingReg.subdomain,
+        whatsapp: verifyingReg.whatsapp    
+      });
+
+    const response = await fetch('/api/verify-school', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: verifyingReg.admin_email,
+        school_name: verifyingReg.school_name,
+        subdomain: verifyingReg.subdomain, 
+        whatsapp: verifyingReg.whatsapp
+      }),
+    });
 
         if (!response.ok) {
            const errorBody = await response.text();
