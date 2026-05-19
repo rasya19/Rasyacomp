@@ -117,7 +117,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .insert([{
           id: schoolSubdomain,              
           name: school_name || 'Sekolah Baru', 
-          is_active: true,                  
           created_at: activationDate.toISOString()
         }]);
   
