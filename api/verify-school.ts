@@ -112,13 +112,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (schoolSubdomain && schoolSubdomain !== '-') {
       console.log(`Attempting to insert school: ${schoolSubdomain} (${school_name})`);
+          
       const { error: schoolError } = await adminSupabase
-        .from('schools')
-        .insert([{
-          id: schoolSubdomain,              
-          name: school_name || 'Sekolah Baru', 
+        .from('schools') // Tetap 'schools' sesuai nama tabel di Supabase
+        .upsert([{
+          id: schoolSubdomain,
+          nama_sekolah: school_name || 'Sekolah Baru', // Memakai nama kolom asli database Mas
           created_at: activationDate.toISOString()
-        }]);
+        }], { onConflict: 'id' });
   
       if (schoolError) {
         console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
