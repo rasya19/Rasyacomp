@@ -84,6 +84,43 @@ async function startServer() {
     res.json({ success: true, user: userData.user });
   });
 
+  // API route for deleting registration
+  app.delete("/api/delete-registration/:id", async (req, res) => {
+    const { id } = req.params;
+    
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.VITE_SUPABASE_URL) {
+      return res.status(500).json({ error: "Server configuration missing" });
+    }
+
+    const adminSupabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+
+    try {
+        // 1. Get subdomain first to clean up schools table
+        const { data: reg } = await adminSupabase
+            .from('registrations')
+            .select('subdomain')
+            .eq('id', id)
+            .single();
+
+        if (reg?.subdomain && reg.subdomain !== '-') {
+            await adminSupabase.from('schools').delete().eq('id', reg.subdomain);
+        }
+
+        // 2. Delete the registration
+        const { error } = await adminSupabase
+            .from('registrations')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        res.json({ success: true, message: "Pendaftar berhasil dihapus permanen!" });
+    } catch (error: any) {
+        console.error("Delete registration error:", error);
+        res.status(500).json({ error: error.message });
+    }
+  });
+
   // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

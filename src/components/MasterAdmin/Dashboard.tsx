@@ -333,10 +333,18 @@ export default function Admin() {
   };
 
   const handleDeleteRegistration = async (id: string) => {
-    if (!confirm('Hapus data pendaftar ini?')) return;
+    if (!window.confirm("Apakah Mas Ismanto yakin ingin menghapus permanen pendaftar ini?")) return;
     try {
-      const { error } = await supabase.from('registrations').delete().eq('id', id);
-      if (error) throw error;
+      const response = await fetch(`/api/delete-registration/${id}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Gagal menghapus pendaftar');
+      }
+      
+      const data = await response.json();
+      setSaveStatus({ type: 'success', message: data.message });
       fetchRegistrations();
     } catch (err) {
       console.error(err);
