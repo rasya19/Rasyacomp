@@ -21,7 +21,7 @@ async function startServer() {
 
   const corsOptions = {
     origin: '*',
-    methods: ['GET', 'POST', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true
   };
@@ -46,11 +46,15 @@ async function startServer() {
     console.log("Received POST to /api/verify-school. Body:", req.body);
     const { email, school_name, subdomain, registrationId } = req.body;
     
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.VITE_SUPABASE_URL) {
-      return res.status(500).json({ error: "Server configuration missing" });
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://erosuotjshhmhduoprwi.supabase.co";
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseServiceKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY is missing from environment");
+      return res.status(500).json({ error: "Server configuration missing: Service Role Key" });
     }
 
-    const adminSupabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
         const activationDate = new Date();
@@ -64,7 +68,7 @@ async function startServer() {
 
         // Jika user sudah ada (422), kita lanjut saja
         if (userError && userError.status !== 422) {
-            console.error("Auth creation error:", userError);
+            console.error("Auth creation error:", userError.message);
             return res.status(400).json({ error: userError.message });
         }
 
@@ -78,9 +82,12 @@ async function startServer() {
             expired_at: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
             auth_uid: userData?.user?.id
           })
-          .or(`id.eq.${registrationId},admin_email.eq.${email}`);
+          .eq('id', registrationId);
 
-        if (regError) throw regError;
+        if (regError) {
+          console.error("Registration update error:", regError.message);
+          throw regError;
+        }
 
         // 3. Insert/Upsert ke tabel schools
         const { error: schoolError } = await adminSupabase
@@ -88,10 +95,14 @@ async function startServer() {
           .upsert([{
             id: subdomain,
             nama_sekolah: school_name || 'Sekolah Baru', 
+            registration_id: registrationId, // Menambahkan ID pendaftaran sebagai referensi
             created_at: activationDate.toISOString()
           }], { onConflict: 'id' });
 
-        if (schoolError) throw schoolError;
+        if (schoolError) {
+          console.error("School upsert error:", schoolError.message);
+          throw schoolError;
+        }
 
         // 4. Send welcome email
         try {
@@ -113,7 +124,7 @@ async function startServer() {
         res.json({ success: true, message: "Verifikasi berhasil & Email terkirim!" });
 
     } catch (error: any) {
-        console.error("Verification error:", error);
+        console.error("Verification endpoint caught error:", error);
         res.status(500).json({ error: error.message });
     }
   });
@@ -121,36 +132,65 @@ async function startServer() {
   // API route for deleting registration
   app.delete("/api/delete-registration/:id", async (req, res) => {
     const { id } = req.params;
+    console.log(`Processing DELETE for registration ID: ${id}`);
     
-    if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.VITE_SUPABASE_URL) {
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://erosuotjshhmhduoprwi.supabase.co";
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!supabaseServiceKey) {
+      console.error("SUPABASE_SERVICE_ROLE_KEY is missing from environment");
       return res.status(500).json({ error: "Server configuration missing" });
     }
 
-    const adminSupabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    const adminSupabase = createClient(supabaseUrl, supabaseServiceKey);
 
     try {
-        // 1. Get subdomain first to clean up schools table
-        const { data: reg } = await adminSupabase
+        // 1. Ambil data subdomain & auth_uid pendaftaran
+        const { data: reg, error: fetchError } = await adminSupabase
             .from('registrations')
-            .select('subdomain')
+            .select('subdomain, auth_uid')
             .eq('id', id)
             .single();
 
-        if (reg?.subdomain && reg.subdomain !== '-') {
-            await adminSupabase.from('schools').delete().eq('id', reg.subdomain);
+        if (fetchError) {
+          console.error(`Error fetching registration ${id}:`, fetchError.message);
+          // Jika tidak ada di registrasi, mungkin sudah terhapus atau ID salah
+          return res.status(404).json({ error: "Pendaftaran tidak ditemukan" });
         }
 
-        // 2. Delete the registration
-        const { error } = await adminSupabase
+        // 2. Hapus data di tabel schools (jika ada)
+        // Kita hapus berdasarkan ID (subdomain) DAN registration_id agar aman
+        if (reg?.subdomain && reg.subdomain !== '-') {
+            console.log(`Deleting school with subdomain: ${reg.subdomain}`);
+            await adminSupabase.from('schools').delete().eq('id', reg.subdomain);
+        }
+        // Juga hapus berdasarkan registration_id jika tabel schools punya kolom tersebut
+        await adminSupabase.from('schools').delete().eq('registration_id', id);
+
+        // 3. Hapus User Auth jika ada (Jika admin ingin sekalian menghapus akun loginnya)
+        if (reg?.auth_uid) {
+           console.log(`Deleting auth user: ${reg.auth_uid}`);
+           const { error: authError } = await adminSupabase.auth.admin.deleteUser(reg.auth_uid);
+           if (authError) {
+             console.warn(`Auth deletion failed (continuing...): ${authError.message}`);
+           }
+        }
+
+        // 4. Akhirnya hapus data pendaftaran utama
+        console.log(`Deleting record from registrations table for ID: ${id}`);
+        const { error: deleteError } = await adminSupabase
             .from('registrations')
             .delete()
             .eq('id', id);
 
-        if (error) throw error;
+        if (deleteError) {
+          console.error("Registration table deletion error:", deleteError.message);
+          throw deleteError;
+        }
 
-        res.json({ success: true, message: "Pendaftar berhasil dihapus permanen!" });
+        res.json({ success: true, message: "Pendaftar dan data terkait berhasil dihapus permanen!" });
     } catch (error: any) {
-        console.error("Delete registration error:", error);
+        console.error("Delete registration route error:", error);
         res.status(500).json({ error: error.message });
     }
   });
