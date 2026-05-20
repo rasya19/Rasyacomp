@@ -349,12 +349,45 @@ export default function Admin() {
   const handleVerifySchool = async (inputSubdomain: string) => {
     if (!verifyingReg) return;
     
+    // 1. Validasi: Tidak boleh kosong atau '-'
     if (!inputSubdomain || inputSubdomain === '-') {
-      setSaveStatus({ type: 'error', message: 'Subdomain belum diisi! Silakan edit data pendaftar terlebih dahulu.' });
+      setSaveStatus({ type: 'error', message: 'Subdomain belum diisi! Silakan isi terlebih dahulu.' });
       return;
     }
+
+    // 2. Validasi: Format (hanya huruf kecil, angka, dan tanda hubung)
+    const subdomainRegex = /^[a-z0-9-]+$/;
+    if (!subdomainRegex.test(inputSubdomain)) {
+      setSaveStatus({ 
+        type: 'error', 
+        message: 'Format subdomain tidak valid! Gunakan hanya huruf kecil, angka, dan tanda hubung (contoh: sekolah-maju).' 
+      });
+      return;
+    }
+
+    setSaveStatus({ type: 'success', message: 'Sedang memproses verifikasi...' });
     
     try {
+      // 3. Validasi: Keunikan (Cek apakah subdomain sudah dipakai sekolah lain)
+      // Kita cek di tabel registrations untuk status 'verified' atau yang sedang diproses
+      const { data: existing, error: checkError } = await supabase
+        .from('registrations')
+        .select('id, school_name')
+        .eq('subdomain', inputSubdomain)
+        .eq('status', 'verified')
+        .neq('id', verifyingReg.id) // Kecuali dirinya sendiri
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+      
+      if (existing) {
+        setSaveStatus({ 
+          type: 'error', 
+          message: `Subdomain "${inputSubdomain}" sudah digunakan oleh ${existing.school_name}. Silakan gunakan yang lain.` 
+        });
+        return;
+      }
+
       console.log("Calling /api/verify-school with:", {
         email: verifyingReg.admin_email,
         school_name: verifyingReg.school_name,
