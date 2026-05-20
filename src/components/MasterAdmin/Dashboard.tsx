@@ -352,42 +352,27 @@ export default function Admin() {
     }
   };
 
-  const [verifyingReg, setVerifyingReg] = useState<any>(null);
-  const [subdomain, setSubdomain] = useState('');
-
-  const handleVerifySchool = async (inputSubdomain: string) => {
-    if (!verifyingReg) return;
+  const handleVerifySchool = async (reg: any) => {
+    if (!reg) return;
     
-    // Auto-sanitasi: lowercase dan hapus spasi sepenuhnya
-    const sanitizedSubdomain = inputSubdomain.toLowerCase().trim().replace(/\s+/g, "");
+    // Auto-subdomain: lowercase dan hapus semua karakter non-alfanumerik
+    const autoSubdomain = reg.school_name.toLowerCase().replace(/[^a-z0-9]/g, '');
     
-    // 1. Validasi: Tidak boleh kosong
-    if (!sanitizedSubdomain) {
-      setSaveStatus({ type: "error", message: "Subdomain belum diisi! Silakan isi terlebih dahulu." });
+    if (!autoSubdomain) {
+      setSaveStatus({ type: 'error', message: 'Nama sekolah tidak valid untuk dibuatkan subdomain otomatis!' });
       return;
     }
 
-    // 2. Validasi: Format (hanya huruf kecil dan angka)
-    const subdomainRegex = /^[a-z0-9]+$/;
-    if (!subdomainRegex.test(sanitizedSubdomain)) {
-      setSaveStatus({ 
-        type: "error", 
-        message: "Format subdomain tidak valid! Gunakan hanya huruf kecil dan angka (contoh: sekolahmaju)." 
-      });
-      return;
-    }
-
-    setSaveStatus({ type: 'success', message: 'Sedang memproses verifikasi...' });
+    setSaveStatus({ type: 'success', message: 'Sedang memproses verifikasi otomatis...' });
     
     try {
-      // 3. Validasi: Keunikan (Cek apakah subdomain sudah dipakai sekolah lain)
-      // Kita cek di tabel registrations untuk status 'verified' atau yang sedang diproses
+      // 1. Validasi: Keunikan (Cek apakah subdomain sudah dipakai sekolah lain)
       const { data: existing, error: checkError } = await supabase
         .from('registrations')
         .select('id, school_name')
-        .eq('subdomain', sanitizedSubdomain)
+        .eq('subdomain', autoSubdomain)
         .eq('status', 'verified')
-        .neq('id', verifyingReg.id) // Kecuali dirinya sendiri
+        .neq('id', reg.id) // Kecuali dirinya sendiri
         .maybeSingle();
 
       if (checkError) throw checkError;
@@ -395,78 +380,57 @@ export default function Admin() {
       if (existing) {
         setSaveStatus({ 
           type: 'error', 
-          message: `Subdomain "${sanitizedSubdomain}" sudah digunakan oleh ${existing.school_name}. Silakan gunakan yang lain.` 
+          message: `Subdomain "${autoSubdomain}" sudah digunakan oleh ${existing.school_name}.` 
         });
         return;
       }
 
-      console.log("Calling /api/verify-school with:", {
-        email: verifyingReg.admin_email,
-        school_name: verifyingReg.school_name,
-        subdomain: sanitizedSubdomain,
-        whatsapp: verifyingReg.whatsapp    
+      const response = await fetch('/api/verify-school', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          registrationId: reg.id,
+          email: reg.admin_email,
+          school_name: reg.school_name,
+          subdomain: autoSubdomain, 
+          whatsapp: reg.whatsapp
+        }),
       });
 
-    const response = await fetch('/api/verify-school', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        registrationId: verifyingReg.id,
-        email: verifyingReg.admin_email,
-        school_name: verifyingReg.school_name,
-        subdomain: sanitizedSubdomain, 
-        whatsapp: verifyingReg.whatsapp
-      }),
-    });
+      if (!response.ok) {
+         const errorBody = await response.text();
+         throw new Error(`Server returned ${response.status}: ${errorBody}`);
+      }
 
-        if (!response.ok) {
-           const errorBody = await response.text();
-           console.error("Server error response:", errorBody);
-           throw new Error(`Server returned ${response.status}: ${errorBody}`);
-        }
-
-        const data = await response.json();
-        console.log("API response:", data);
-
-        // API sudah mengupdate tabel registrations dan schools secara total
-        setVerifyingReg(null);
-        setSubdomain('');
-        setSaveStatus({ type: 'success', message: 'Verifikasi berhasil!' });
-        fetchRegistrations(); // Refresh list agar status terupdate di UI
+      setSaveStatus({ type: 'success', message: 'Sekolah berhasil diverifikasi otomatis!' });
+      fetchRegistrations(); // Refresh list agar status terupdate di UI
     } catch(err: any) {
         console.error("Error in handleVerifySchool:", err);
         setSaveStatus({ type: 'error', message: 'Gagal verifikasi: ' + err.message });
     }
   };
 
-  const handleUnverifySchool = async () => {
-    if (!verifyingReg) return;
+  const handleUnverifySchool = async (reg: any) => {
+    if (!reg) return;
+    if (!window.confirm(`Apakah Mas Ismanto yakin ingin membatalkan verifikasi untuk ${reg.school_name}?`)) return;
+    
+    setSaveStatus({ type: 'success', message: 'Membatalkan verifikasi...' });
     
     try {
-        console.log("Calling /api/unverify-school with:", {
-            uid: verifyingReg.auth_uid,
-            registrationId: verifyingReg.id
-        });
         const response = await fetch('/api/unverify-school', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                registrationId: verifyingReg.id,
-                subdomain: verifyingReg.subdomain
+                registrationId: reg.id,
+                subdomain: reg.subdomain
             })
         });
 
         if (!response.ok) {
            const errorBody = await response.text();
-           console.error("Server error response:", errorBody);
            throw new Error(`Server returned ${response.status}: ${errorBody}`);
         }
 
-        const data = await response.json();
-        console.log("API response:", data);
-
-        setVerifyingReg(null);
-        setSubdomain('');
         setSaveStatus({ type: 'success', message: 'Verifikasi berhasil dibatalkan!' });
         fetchRegistrations();
     } catch(err: any) {
@@ -1042,15 +1006,14 @@ export default function Admin() {
                             </div>
                             <button
                               onClick={() => {
-                                setVerifyingReg(reg);
-                                // This opens the Manage Access view/modal if needed
+                                window.open(`https://${reg.subdomain}.rasyatech.rsch.my.id`, '_blank');
                               }}
                               className="px-4 py-2 bg-indigo-600 text-white shadow-lg shadow-indigo-100 rounded-xl text-xs font-black transition-all hover:bg-indigo-700"
                             >
                               Manage Access
                             </button>
                             <button 
-                              onClick={() => setVerifyingReg(reg)}
+                              onClick={() => handleUnverifySchool(reg)}
                               className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors group"
                               title="Batalkan Verifikasi"
                             >
@@ -1059,10 +1022,7 @@ export default function Admin() {
                           </>
                         ) : (
                           <button
-                            onClick={() => {
-                              setVerifyingReg(reg);
-                              // Open verification modal
-                            }}
+                            onClick={() => handleVerifySchool(reg)}
                             className="px-6 py-2.5 bg-indigo-600 text-white shadow-lg shadow-indigo-100 rounded-xl text-sm font-black transition-all hover:bg-indigo-700 flex items-center gap-2"
                           >
                             <ShieldCheck className="w-4 h-4" />
@@ -1146,40 +1106,6 @@ export default function Admin() {
 
       {/* Modals */}
       <AnimatePresence>
-        {verifyingReg && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setVerifyingReg(null)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-lg p-10 rounded-[40px] shadow-2xl">
-              <h3 className="text-2xl font-black mb-4">
-                {verifyingReg.status === 'verified' ? 'Batalkan Verifikasi' : 'Verifikasi'} {verifyingReg.school_name}
-              </h3>
-              {verifyingReg.status !== 'verified' && (
-                <p className="text-slate-500 mb-6 font-medium">Masukkan subdomain yang diinginkan (cth: sekolah1 ke sekolah1.rasyatech.rsch.my.id)</p>
-              )}
-              <form onSubmit={(e) => { 
-                e.preventDefault(); 
-                if (verifyingReg.status === 'verified') {
-                  handleUnverifySchool();
-                } else {
-                  handleVerifySchool(subdomain);
-                }
-              }} className="space-y-6">
-                {verifyingReg.status !== 'verified' && (
-                  <div>
-                    <label className="text-xs font-black uppercase tracking-widest text-slate-400">Subdomain Prefix</label>
-                    <input type="text" required value={subdomain} onChange={e => setSubdomain(e.target.value)} className="w-full p-4 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-indigo-600 font-bold" />
-                  </div>
-                )}
-                <div className="flex gap-4 pt-4">
-                  <button type="submit" className="flex-1 py-5 bg-indigo-600 text-white font-black rounded-2xl shadow-xl">
-                    {verifyingReg.status === 'verified' ? 'Batalkan Verifikasi' : 'Verifikasi & Buat Akun'}
-                  </button>
-                  <button type="button" onClick={() => setVerifyingReg(null)} className="px-8 py-5 bg-slate-100 text-slate-600 font-black rounded-2xl">Batal</button>
-                </div>
-              </form>
-            </motion.div>
-          </div>
-        )}
         {editingService && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setEditingService(null)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
