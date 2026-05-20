@@ -115,20 +115,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           
       const { error: schoolError } = await adminSupabase
         .from('schools') // Tetap 'schools' sesuai nama tabel di Supabase
-        .upsert([{
+        .insert([{
           id: schoolSubdomain,
           nama_sekolah: school_name || 'Sekolah Baru', // Memakai nama kolom asli database Mas
           created_at: activationDate.toISOString()
-        }], { onConflict: 'id' });
+        }]);
   
       if (schoolError) {
         console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
-        // Jika eror bukan karena duplikat ID, kita return 500
+        // Jika eror karena duplikat ID/slug, kita abaikan saja karena berarti sekolah sudah terdaftar
         if (!schoolError.message.includes('duplicate key')) {
            return res.status(500).json({ error: "Gagal membuat data schools: " + schoolError.message });
         }
       } else {
-        console.log(`Successfully inserted/found school: ${schoolSubdomain}`);
+        console.log(`Successfully inserted school: ${schoolSubdomain}`);
       }
     } else {
       console.warn("Subdomain is still empty or '-', skipping school table insertion");
