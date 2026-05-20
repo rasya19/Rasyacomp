@@ -44,7 +44,7 @@ async function startServer() {
   // API route for school verification
   app.post("/api/verify-school", async (req, res) => {
     console.log("Received POST to /api/verify-school. Body:", req.body);
-    const { email, school_name, subdomain } = req.body;
+    const { email, school_name, subdomain, registrationId } = req.body;
     
     if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.VITE_SUPABASE_URL) {
       return res.status(500).json({ error: "Server configuration missing" });
@@ -52,36 +52,70 @@ async function startServer() {
 
     const adminSupabase = createClient(process.env.VITE_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-    // 1. Create User
-    const { data: userData, error: userError } = await adminSupabase.auth.admin.createUser({
-      email,
-      email_confirm: true,
-      user_metadata: { school_name, subdomain }
-    });
-
-    if (userError) return res.status(400).json({ error: userError.message });
-
-    // 2. Send email
     try {
-        console.log(`Attempting to send email to ${email}...`);
-        const info = await transporter.sendMail({
-            from: '"Rasyacomp Support" <ismanto095@gmail.com>',
-            to: email,
-            subject: `Selamat! Website Sekolah ${school_name} Telah Aktif`,
-            text: `Halo Admin ${school_name},\n\nPendaftaran Anda di Rasyatech telah diverifikasi. Sekarang Anda sudah memiliki website resmi sendiri. Berikut adalah detail akses Anda:\n\nURL Website: https://${subdomain}.rasch.my.id\n\nEmail Login: ${email}\n\nSilakan klik URL di atas untuk mulai mengelola profil sekolah Anda. Terima kasih telah mempercayakan layanan digital Anda kepada Rasyatech.\n\nSalam,\nRasyacomp Support`
-        });
-        console.log("Email sent successfully:", info.messageId);
-    } catch (emailError: any) {
-        console.error("Failed to send email. Error details:", {
-            message: emailError.message,
-            code: emailError.code,
-            command: emailError.command,
-            response: emailError.response
-        });
-        // Don't fail the verification if email fails
-    }
+        const activationDate = new Date();
 
-    res.json({ success: true, user: userData.user });
+        // 1. Create Supabase Auth User
+        const { data: userData, error: userError } = await adminSupabase.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: { school_name, subdomain }
+        });
+
+        // Jika user sudah ada (422), kita lanjut saja
+        if (userError && userError.status !== 422) {
+            console.error("Auth creation error:", userError);
+            return res.status(400).json({ error: userError.message });
+        }
+
+        // 2. Update status di tabel registrations
+        const { error: regError } = await adminSupabase
+          .from('registrations')
+          .update({ 
+            status: 'verified',
+            subdomain: subdomain,
+            activated_at: activationDate.toISOString(),
+            expired_at: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+            auth_uid: userData?.user?.id
+          })
+          .or(`id.eq.${registrationId},admin_email.eq.${email}`);
+
+        if (regError) throw regError;
+
+        // 3. Insert/Upsert ke tabel schools
+        const { error: schoolError } = await adminSupabase
+          .from('schools') 
+          .upsert([{
+            id: subdomain,
+            nama_sekolah: school_name || 'Sekolah Baru', 
+            created_at: activationDate.toISOString()
+          }], { onConflict: 'id' });
+
+        if (schoolError) throw schoolError;
+
+        // 4. Send welcome email
+        try {
+            console.log(`Attempting to send email to ${email}...`);
+            const domainUtama = "rsch.my.id";
+            const urlSekolah = `https://${subdomain}.${domainUtama}`;
+            
+            const info = await transporter.sendMail({
+                from: '"Rasyacomp Support" <ismanto095@gmail.com>',
+                to: email,
+                subject: `Selamat! Website Sekolah ${school_name} Telah Aktif`,
+                text: `Halo Admin ${school_name},\n\nPendaftaran Anda di Rasyatech telah diverifikasi. Sekarang Anda sudah memiliki website resmi sendiri. Berikut adalah detail akses Anda:\n\nURL Website: ${urlSekolah}\n\nEmail Login: ${email}\n\nSilakan klik URL di atas untuk mulai mengelola profil sekolah Anda. Terima kasih telah mempercayakan layanan digital Anda kepada Rasyatech.\n\nSalam,\nRasyacomp Support`
+            });
+            console.log("Email sent successfully:", info.messageId);
+        } catch (emailError: any) {
+            console.warn("Failed to send email:", emailError.message);
+        }
+
+        res.json({ success: true, message: "Verifikasi berhasil & Email terkirim!" });
+
+    } catch (error: any) {
+        console.error("Verification error:", error);
+        res.status(500).json({ error: error.message });
+    }
   });
 
   // API route for deleting registration

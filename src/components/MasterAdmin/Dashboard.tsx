@@ -1006,7 +1006,7 @@ export default function Admin() {
                             </div>
                             <button
                               onClick={() => {
-                                window.open(`https://${reg.subdomain}.rasyatech.rsch.my.id`, '_blank');
+                                window.open(`https://${reg.subdomain}.rsch.my.id`, '_blank');
                               }}
                               className="px-4 py-2 bg-indigo-600 text-white shadow-lg shadow-indigo-100 rounded-xl text-xs font-black transition-all hover:bg-indigo-700"
                             >
