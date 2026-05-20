@@ -18,10 +18,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { uid, registrationId } = req.body;
+  const uid = req.body.uid || req.body.authUserId;
+  const registrationId = req.body.registrationId || req.body.schoolId;
+  const subdomain = req.body.subdomain;
   
   if (!uid || !registrationId) {
-      return res.status(400).json({ error: "User ID (uid) and registrationId are required" });
+      return res.status(400).json({ 
+          error: "User ID and registrationId are required",
+          received: { uid, registrationId, body: req.body } 
+      });
   }
 
   // 4. VALIDASI KONFIGURASI SERVER (ENV)
@@ -35,22 +40,56 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   try {
-    // 5a. UPDATE STATUS DI DATABASE
+    // 5a. Ambil data pendaftaran dulu untuk mendapatkan subdomain & auth_uid jika diperlukan
+    const { data: reg, error: fetchError } = await adminSupabase
+      .from('registrations')
+      .select('subdomain, auth_uid')
+      .eq('id', registrationId)
+      .single();
+
+    if (fetchError || !reg) {
+        return res.status(404).json({ error: "Registration not found" });
+    }
+
+    const finalUid = uid || reg.auth_uid;
+    const finalSubdomain = subdomain || reg.subdomain;
+
+    if (!finalUid) {
+        return res.status(400).json({ error: "User ID (auth_uid) not found for this registration" });
+    }
+
+    // 5b. UPDATE STATUS DI DATABASE (Reset semua data verifikasi)
     const { error: dbError } = await adminSupabase
       .from('registrations')
-      .update({ status: 'pending' })
+      .update({ 
+        status: 'pending',
+        auth_uid: null,
+        activated_at: null,
+        expired_at: null
+      })
       .eq('id', registrationId);
 
     if (dbError) {
         return res.status(400).json({ error: `Database error: ${dbError.message}` });
     }
 
-    // 5b. PROSES DELETE USER DI SUPABASE AUTH
-    const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(uid);
+    // 5c. HAPUS DATA DI TABEL schools (Multi-tenant)
+    if (finalSubdomain && finalSubdomain !== '-') {
+      const { error: schoolDeleteError } = await adminSupabase
+        .from('schools')
+        .delete()
+        .eq('id', finalSubdomain);
+      
+      if (schoolDeleteError) {
+        console.warn("Gagal hapus data di tabel schools:", schoolDeleteError.message);
+      }
+    }
+
+    // 5d. PROSES DELETE USER DI SUPABASE AUTH
+    const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(finalUid);
 
     if (deleteError) {
         console.error("Auth delete error:", deleteError);
-        // Note: DB is updated, user auth not deleted. Might want to roll back DB update here.
         return res.status(400).json({ error: `Auth error: ${deleteError.message}` });
     }
 

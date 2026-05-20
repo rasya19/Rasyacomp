@@ -182,6 +182,31 @@ export default function Admin() {
     }
   };
 
+  const [resetLoading, setResetLoading] = useState(false);
+  const handleSendMagicLink = async () => {
+    if (!email) {
+      setSaveStatus({ type: 'error', message: 'Silakan masukkan email Anda (ismanto095@gmail.com) terlebih dahulu di kotak input email.' });
+      return;
+    }
+    setResetLoading(true);
+    setSaveStatus(null);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: window.location.origin + '/admin',
+        },
+      });
+      if (error) throw error;
+      setSaveStatus({ type: 'success', message: 'Magic Link dikirim! Silakan cek email Anda (ismanto095@gmail.com).' });
+    } catch (error: any) {
+      console.error(error);
+      setSaveStatus({ type: 'error', message: 'Gagal mengirim link: ' + (error.message || 'Error tidak diketahui') });
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
   const handleSaveConfig = async (e: FormEvent) => {
     e.preventDefault();
     setSavingConfig(true);
@@ -474,7 +499,7 @@ export default function Admin() {
 
   const isAuthorizedSuperAdmin = user?.email?.toLowerCase() === 'ismanto095@gmail.com';
   const hostnamePrefix = window.location.hostname.split('.')[0];
-  const isMainDomain = hostnamePrefix === 'rasyatech' || hostnamePrefix === 'www' || window.location.hostname.split('.').length < 3;
+  const isMainDomain = hostnamePrefix === 'rasyatech' || hostnamePrefix === 'www' || window.location.hostname.split('.').length < 3 || window.location.hostname.includes('asia-southeast1.run.app') || window.location.hostname.includes('localhost');
 
   useEffect(() => {
     if (!loading && user && (!isAuthorizedSuperAdmin || !isMainDomain)) {
@@ -537,9 +562,17 @@ export default function Admin() {
           </div>
           <button 
             type="submit"
-            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all"
+            className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition-all mb-2"
           >
             Login
+          </button>
+          <button 
+            type="button"
+            onClick={handleSendMagicLink}
+            disabled={resetLoading}
+            className="w-full text-indigo-600 font-bold text-sm hover:underline disabled:opacity-50"
+          >
+            {resetLoading ? 'Mengirim...' : 'Gunakan Magic Link (Login tanpa password)'}
           </button>
         </form>
         <div className="text-center font-bold text-slate-400 mb-4">ATAU</div>

@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 // DANGER: Credentials hardcoded for prototyping purposes.
 // Do NOT commit these to production or share this codebase publicly.
-const supabaseUrl = "https://erosuotjshhmhduoprwi.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyb3N1b3Rqc2hobWhkdW9wcndpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNjc0NzAsImV4cCI6MjA5Mzg0MzQ3MH0.h2JrBMEEVlnQWq5v23g6LVryU1sclFyH6lq_vafCAhs";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "https://erosuotjshhmhduoprwi.supabase.co";
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyb3N1b3Rqc2hobWhkdW9wcndpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyNjc0NzAsImV4cCI6MjA5Mzg0MzQ3MH0.h2JrBMEEVlnQWq5v23g6LVryU1sclFyH6lq_vafCAhs";
 
 // Debug: Log all environment variables to find the correct names
 console.log("Supabase Debug - All Env Variables:", import.meta.env);
