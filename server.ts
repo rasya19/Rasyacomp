@@ -130,8 +130,9 @@ async function startServer() {
   });
 
   // API route for deleting registration
-  app.delete("/api/delete-registration/:id", async (req, res) => {
-    const { id } = req.params;
+  app.delete("/api/delete-registration", async (req, res) => {
+    const id = (req.query.id as string) || (req.params as any).id;
+    if (!id) return res.status(400).json({ error: "ID is required" });
     console.log(`Processing DELETE for registration ID: ${id}`);
     
     const supabaseUrl = process.env.VITE_SUPABASE_URL || "https://erosuotjshhmhduoprwi.supabase.co";
@@ -210,21 +211,10 @@ async function startServer() {
     });
   }
 
-  return app;
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
+  });
 }
 
-export default async (req: any, res: any) => {
-    const app = await startServer();
-    return app(req, res);
-};
-
-if (process.env.NODE_ENV !== 'production') {
-    async function listen() {
-        const app = await startServer();
-        app.listen(3000, "0.0.0.0", () => {
-             console.log(`Server running on http://localhost:3000`);
-        });
-    }
-    listen();
-}
+startServer();
 

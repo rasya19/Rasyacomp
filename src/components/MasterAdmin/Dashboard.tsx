@@ -335,7 +335,7 @@ export default function Admin() {
   const handleDeleteRegistration = async (id: string) => {
     if (!window.confirm("Apakah Mas Ismanto yakin ingin menghapus permanen pendaftar ini?")) return;
     try {
-      const response = await fetch(`/api/delete-registration/${id}`, {
+      const response = await fetch(`/api/delete-registration?id=${id}`, {
         method: 'DELETE',
       });
       
