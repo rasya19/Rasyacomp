@@ -350,21 +350,21 @@ export default function Admin() {
   const handleVerifySchool = async (inputSubdomain: string) => {
     if (!verifyingReg) return;
     
-    // Auto-sanitasi: lowercase dan ganti spasi dengan tanda hubung
-    const sanitizedSubdomain = inputSubdomain.toLowerCase().trim().replace(/\s+/g, '-');
+    // Auto-sanitasi: lowercase dan hapus spasi sepenuhnya
+    const sanitizedSubdomain = inputSubdomain.toLowerCase().trim().replace(/\s+/g, "");
     
-    // 1. Validasi: Tidak boleh kosong atau '-'
-    if (!sanitizedSubdomain || sanitizedSubdomain === '-') {
-      setSaveStatus({ type: 'error', message: 'Subdomain belum diisi! Silakan isi terlebih dahulu.' });
+    // 1. Validasi: Tidak boleh kosong
+    if (!sanitizedSubdomain) {
+      setSaveStatus({ type: "error", message: "Subdomain belum diisi! Silakan isi terlebih dahulu." });
       return;
     }
 
-    // 2. Validasi: Format (hanya huruf kecil, angka, dan tanda hubung)
-    const subdomainRegex = /^[a-z0-9-]+$/;
+    // 2. Validasi: Format (hanya huruf kecil dan angka)
+    const subdomainRegex = /^[a-z0-9]+$/;
     if (!subdomainRegex.test(sanitizedSubdomain)) {
       setSaveStatus({ 
-        type: 'error', 
-        message: 'Format subdomain tidak valid! Gunakan hanya huruf kecil, angka, dan tanda hubung (contoh: sekolah-maju).' 
+        type: "error", 
+        message: "Format subdomain tidak valid! Gunakan hanya huruf kecil dan angka (contoh: sekolahmaju)." 
       });
       return;
     }
