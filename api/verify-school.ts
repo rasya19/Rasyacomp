@@ -19,9 +19,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const { email, school_name, subdomain, whatsapp } = req.body;
+  const { registrationId, email, school_name, subdomain } = req.body;
   
-  // 4. VALIDASI KONFIGURASI SERVER (ENV)
+  if (!(registrationId || email) || !subdomain) {
+    return res.status(400).json({ error: "registrationId/email and subdomain are required" });
+  }
+
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY || !process.env.SUPABASE_URL) {
     return res.status(500).json({ error: "Server configuration missing" });
   }
@@ -32,142 +35,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   try {
-    // Generate password
-    const generatedPassword = Math.random().toString(36).slice(-8);
-
-    // 5. PROSES CREATE USER DI SUPABASE
-    const { data: userData, error: userError } = await adminSupabase.auth.admin.createUser({
-      email,
-      password: generatedPassword,
-      email_confirm: true,
-      user_metadata: { school_name, subdomain }
-    });
-
-    if (userError) {
-        return res.status(400).json({ error: userError.message });
-    }
-
-    // 👇 JALUR OTOMATISASI AMAN (HANYA MENGISI TABEL PROFILES)
-    if (userData?.user) {
-      const newUserId = userData.user.id;
-
-      // Ambil data kiriman, kalau front-end ngirim kosong, otomatis diisi strip '-' agar database tidak eror
-      const finalSubdomain = subdomain || '-';
-      const finalWhatsapp = whatsapp || '-';
-
-      const { error: profileError } = await adminSupabase
-        .from('profiles')
-        .insert([{
-          id: newUserId,
-          email: email,
-          role: 'admin_sekolah',
-          subdomain: finalSubdomain,
-          whatsapp: finalWhatsapp,
-          is_approved: true,
-          updated_at: new Date().toISOString()
-        }]);
-
-      if (profileError) {
-        console.error("Gagal otomatis menyisipkan ke tabel profiles:", profileError);
-        return res.status(500).json({ error: "Gagal membuat data profiles: " + profileError.message });
-      }
-    }
-
- 
     const activationDate = new Date();
-    const expiredDate = new Date();
-    expiredDate.setFullYear(activationDate.getFullYear() + 1); 
-
-    // Update registration dengan auth_uid, status, dan data masa aktif baru
+    
+    // 1. UPDATE STATUS DI TABEL registrations
     const { error: dbError } = await adminSupabase
       .from('registrations')
       .update({ 
-        auth_uid: userData.user.id, 
         status: 'verified',
+        subdomain: subdomain, // Pastikan subdomain juga diupdate di tabel registrations
         activated_at: activationDate.toISOString(),
-        expired_at: expiredDate.toISOString()
+        expired_at: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString()
       })
-      .eq('admin_email', email);
+      .or(`id.eq.${registrationId},admin_email.eq.${email}`);
 
     if (dbError) {
       console.error("Gagal update registrations:", dbError);
       return res.status(500).json({ error: "Gagal update status pendaftaran: " + dbError.message });
     }
 
-    // OTOMATIS INSERT KE TABEL schools (Multi-tenant foundation)
-    let schoolSubdomain = subdomain;
-    
-    // Fallback: Jika di body kosong, coba ambil dari data pendaftaran yang baru saja di-update
-    if (!schoolSubdomain) {
-      console.log("Subdomain missing in request body, fetching from registration record...");
-      const { data: regData } = await adminSupabase
-        .from('registrations')
-        .select('subdomain')
-        .eq('admin_email', email)
-        .single();
-      if (regData?.subdomain) {
-        schoolSubdomain = regData.subdomain;
-      }
-    }
-
-    if (schoolSubdomain && schoolSubdomain !== '-') {
-      console.log(`Attempting to insert school: ${schoolSubdomain} (${school_name})`);
-          
-      const { error: schoolError } = await adminSupabase
+    // 2. INSERT/UPSERT KE TABEL schools
+    if (subdomain && subdomain !== '-') {
+      await adminSupabase
         .from('schools') 
-        .insert([{
-          id: schoolSubdomain,
+        .upsert([{
+          id: subdomain,
           nama_sekolah: school_name || 'Sekolah Baru', 
           created_at: activationDate.toISOString()
-        }]);
-  
-      if (schoolError) {
-        console.error("Gagal otomatis membuat data di tabel schools:", schoolError);
-        // Abaikan error jika data sudah ada (duplicate) atau masalah constraint ON CONFLICT
-        const isDuplicate = schoolError.message.includes('duplicate key') || 
-                            schoolError.message.includes('unique constraint') ||
-                            schoolError.message.includes('ON CONFLICT');
-                            
-        if (!isDuplicate) {
-           return res.status(500).json({ error: "Gagal membuat data schools: " + schoolError.message });
-        }
-      } else {
-        console.log(`Successfully inserted school: ${schoolSubdomain}`);
-      }
-    } else {
-      console.warn("Subdomain is still empty or '-', skipping school table insertion");
-    }
-    // ======================================================================
-
-    // 6. KONFIGURASI PENGIRIMAN EMAIL (NODEMAILER)
-    if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
-        const transporter = nodemailer.createTransport({
-          host: 'smtp.gmail.com',
-          port: 465,
-          secure: true,
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS
-          }
-        });
-    
-        // 7. KIRIM EMAIL NOTIFIKASI
-        await transporter.sendMail({
-            from: '"Rasyacomp Support" <ismanto095@gmail.com>',
-            to: email,
-            subject: `Selamat! Website Sekolah ${school_name} Telah Aktif`,
-            text: `Halo Admin ${school_name},\n\nPendaftaran Anda di Rasyatech telah diverifikasi. Sekarang Anda sudah memiliki website resmi sendiri. Berikut adalah detail akses Anda:\n\nURL Website: https://${subdomain}.rsch.my.id\n\nEmail Login: ${email}\nPassword: ${generatedPassword}\n\nSilakan klik URL di atas untuk mulai mengelola profil sekolah Anda. Terima kasih telah mempercayakan layanan digital Anda kepada Rasyatech.\n\nSalam,\nRasyacomp Support`
-        });
-    } else {
-        console.warn("EMAIL_USER or EMAIL_PASS not set, skipping email notification");
+        }], { onConflict: 'id' });
     }
 
-    // 8. RESPON SUKSES
     return res.status(200).json({ 
         success: true, 
-        message: "Verifikasi berhasil dan email terkirim",
-        user: userData.user,
-        password: generatedPassword 
+        message: "Sekolah berhasil diverifikasi!" 
     });
 
   } catch (error: any) {

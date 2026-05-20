@@ -18,7 +18,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method Not Allowed' });
   }
 
-  const uid = req.body.uid || req.body.authUserId;
   const registrationId = req.body.registrationId || req.body.schoolId;
   const subdomain = req.body.subdomain;
   
@@ -40,25 +39,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   );
 
   try {
-    // 5a. Ambil data pendaftaran dulu untuk mendapatkan subdomain & auth_uid jika diperlukan
+    // 5a. Ambil data pendaftaran dulu untuk mendapatkan subdomain jika diperlukan
     const { data: reg, error: fetchError } = await adminSupabase
       .from('registrations')
-      .select('subdomain, auth_uid')
+      .select('subdomain')
       .eq('id', registrationId)
       .single();
 
-    if (fetchError || !reg) {
-        return res.status(404).json({ error: "Registration not found" });
-    }
+    const finalSubdomain = subdomain || reg?.subdomain;
 
-    const finalUid = uid || reg.auth_uid;
-    const finalSubdomain = subdomain || reg.subdomain;
-
-    if (!finalUid) {
-        return res.status(400).json({ error: "User ID (auth_uid) not found for this registration" });
-    }
-
-    // 5b. UPDATE STATUS DI DATABASE (Reset semua data verifikasi)
+    // 5b. UPDATE STATUS DI DATABASE (Reset status dan auth_uid)
     const { error: dbError } = await adminSupabase
       .from('registrations')
       .update({ 
@@ -75,28 +65,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // 5c. HAPUS DATA DI TABEL schools (Multi-tenant)
     if (finalSubdomain && finalSubdomain !== '-') {
-      const { error: schoolDeleteError } = await adminSupabase
+      await adminSupabase
         .from('schools')
         .delete()
         .eq('id', finalSubdomain);
-      
-      if (schoolDeleteError) {
-        console.warn("Gagal hapus data di tabel schools:", schoolDeleteError.message);
-      }
-    }
-
-    // 5d. PROSES DELETE USER DI SUPABASE AUTH
-    const { error: deleteError } = await adminSupabase.auth.admin.deleteUser(finalUid);
-
-    if (deleteError) {
-        console.error("Auth delete error:", deleteError);
-        return res.status(400).json({ error: `Auth error: ${deleteError.message}` });
     }
 
     // 6. RESPON SUKSES
     return res.status(200).json({ 
         success: true, 
-        message: "Verifikasi berhasil dibatalkan (Status: pending, User dihapus)"
+        message: "Verifikasi berhasil dibatalkan!" 
     });
 
   } catch (error: any) {

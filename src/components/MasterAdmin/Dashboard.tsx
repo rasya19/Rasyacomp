@@ -402,6 +402,7 @@ export default function Admin() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        registrationId: verifyingReg.id,
         email: verifyingReg.admin_email,
         school_name: verifyingReg.school_name,
         subdomain: sanitizedSubdomain, 
@@ -418,11 +419,11 @@ export default function Admin() {
         const data = await response.json();
         console.log("API response:", data);
 
-        await handleUpdateRegStatus(verifyingReg.id, 'verified');
-        await supabase.from('registrations').update({ subdomain: subdomain }).eq('id', verifyingReg.id);
+        // API sudah mengupdate tabel registrations dan schools secara total
         setVerifyingReg(null);
         setSubdomain('');
         setSaveStatus({ type: 'success', message: 'Verifikasi berhasil!' });
+        fetchRegistrations(); // Refresh list agar status terupdate di UI
     } catch(err: any) {
         console.error("Error in handleVerifySchool:", err);
         setSaveStatus({ type: 'error', message: 'Gagal verifikasi: ' + err.message });
@@ -441,8 +442,8 @@ export default function Admin() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                uid: verifyingReg.auth_uid, // Ensure auth_uid is present
-                registrationId: verifyingReg.id
+                registrationId: verifyingReg.id,
+                subdomain: verifyingReg.subdomain
             })
         });
 
