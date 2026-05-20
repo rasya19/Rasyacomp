@@ -22,10 +22,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const registrationId = req.body.registrationId || req.body.schoolId;
   const subdomain = req.body.subdomain;
   
-  if (!uid || !registrationId) {
+  if (!registrationId) {
       return res.status(400).json({ 
-          error: "User ID and registrationId are required",
-          received: { uid, registrationId, body: req.body } 
+          error: "registrationId is required",
+          received: { body: req.body } 
       });
   }
 
