@@ -16,7 +16,8 @@ import {
   AlertCircle,
   Loader2,
   ArrowLeft,
-  Users
+  Users,
+  ShieldCheck
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'motion/react';
@@ -1024,34 +1025,43 @@ export default function Admin() {
                         <p className="text-slate-500 font-medium">Admin: <span className="text-slate-900 font-bold">{reg.admin_name}</span> ({reg.admin_email})</p>
                         <p className="text-slate-400 text-xs font-bold mt-1">WA: {reg.WA || '-'}</p>
                       </div>
-                      <div className="flex gap-2">
-                        <div className={`p-2 rounded-xl flex items-center gap-2 ${reg.is_approved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                           <CheckCircle2 className="w-4 h-4" />
-                           <span className="text-[10px] font-black uppercase">{reg.is_approved ? 'Approved' : 'Unapproved'}</span>
-                        </div>
-                        <button 
-                          onClick={() => handleUpdateRegStatus(reg.id, reg.status === 'verified' ? 'pending' : 'verified')}
-                          className={`p-2 rounded-xl transition-colors ${
-                            reg.status === 'verified' ? 'bg-amber-50 text-amber-600 hover:bg-amber-100' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                          }`}
-                        >
-                          {reg.status === 'verified' ? <XCircle className="w-4 h-4" /> : <CheckCircle2 className="w-4 h-4" />}
-                        </button>
-                        <button
-                          onClick={() => {
-                          // 1. Set data pendaftar aktif agar state penampung terisi
-                          setVerifyingReg(reg);
-                          
-                          // 2. Panggil fungsi bawaan Mas dengan memasukkan data subdomain bawaan pendaftar!
-                          handleVerifySchool(reg.subdomain);
-                        }}
-                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                            reg.status === 'verified' ? 'bg-indigo-600 text-white shadow-lg' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                          }`}
-                        >
-                          {reg.status === 'verified' ? 'Manage Access' : 'Verify Now'}
-                        </button>
-                        <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors">
+                      <div className="flex flex-wrap items-center gap-3">
+                        {reg.status === 'verified' ? (
+                          <>
+                            <div className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-xl flex items-center gap-2 border border-emerald-100">
+                               <CheckCircle2 className="w-4 h-4" />
+                               <span className="text-xs font-black uppercase tracking-tight">TERVERIFIKASI</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setVerifyingReg(reg);
+                                // This opens the Manage Access view/modal if needed
+                              }}
+                              className="px-4 py-2 bg-indigo-600 text-white shadow-lg shadow-indigo-100 rounded-xl text-xs font-black transition-all hover:bg-indigo-700"
+                            >
+                              Manage Access
+                            </button>
+                            <button 
+                              onClick={() => setVerifyingReg(reg)}
+                              className="p-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors group"
+                              title="Batalkan Verifikasi"
+                            >
+                              <XCircle className="w-5 h-5" />
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setVerifyingReg(reg);
+                              // Open verification modal
+                            }}
+                            className="px-6 py-2.5 bg-indigo-600 text-white shadow-lg shadow-indigo-100 rounded-xl text-sm font-black transition-all hover:bg-indigo-700 flex items-center gap-2"
+                          >
+                            <ShieldCheck className="w-4 h-4" />
+                            Verify Now
+                          </button>
+                        )}
+                        <button onClick={() => handleDeleteRegistration(reg.id)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-red-50 hover:text-red-500 transition-colors ml-auto">
                           <Trash2 className="w-5 h-5" />
                         </button>
                       </div>
